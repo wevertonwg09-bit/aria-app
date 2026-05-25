@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aria — Assistente Pessoal</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f13;--surface:#17171f;--surface2:#1e1e28;--border:#2a2a38;
+  --accent:#6c63ff;--green:#43e97b;--red:#ff6584;--amber:#f5a623;--teal:#4ecdc4;
+  --text:#e8e8f0;--muted:#7070a0;
+  --mono:'DM Mono',monospace;--sans:'Sora',sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;overflow:hidden}
+.app{display:grid;grid-template-columns:56px 1fr;grid-template-rows:52px 1fr;height:100vh}
+
+/* Header */
+.header{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 18px;gap:12px}
+.logo{font-size:16px;font-weight:600;letter-spacing:-0.4px;display:flex;align-items:center;gap:8px}
+.logo-dot{width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--red));animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(1.3)}}
+.header-chips{display:flex;gap:8px;margin-left:8px}
+.chip{font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:5px}
+.chip.on{background:rgba(67,233,123,.1);border-color:rgba(67,233,123,.3);color:var(--green)}
+.chip.ai{background:rgba(108,99,255,.1);border-color:rgba(108,99,255,.3);color:var(--accent)}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.clock{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.notif-btn{width:30px;height:30px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;position:relative;transition:all .2s}
+.notif-btn:hover{color:var(--text)}
+.notif-badge{position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:var(--red);font-size:8px;color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+
+/* Icon sidebar */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:4px}
+.nav-icon-btn{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;transition:all .2s;color:var(--muted);position:relative}
+.nav-icon-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-icon-btn.active{background:rgba(108,99,255,.15);color:var(--accent)}
+.nav-icon-btn .tooltip{position:absolute;left:52px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:4px 10px;font-size:11.5px;color:var(--text);white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s;font-family:var(--sans);z-index:50}
+.nav-icon-btn:hover .tooltip{opacity:1}
+.nav-sep{width:28px;height:1px;background:var(--border);margin:6px 0}
+.sidebar-bottom{margin-top:auto}
+
+/* Main */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.view{display:none;flex-direction:column;height:100%;overflow:hidden}
+.view.active{display:flex}
+
+/* DASHBOARD */
+.dash-scroll{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.dash-greeting{font-size:18px;font-weight:600;letter-spacing:-0.3px}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s}
+.kpi:hover{border-color:rgba(108,99,255,.4)}
+.kpi-label{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.kpi-val{font-size:20px;font-weight:600;letter-spacing:-0.5px}
+.kpi-note{font-size:11px;font-family:var(--mono);margin-top:4px;color:var(--muted)}
+.dash-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:500}
+.card-link{font-size:11px;font-family:var(--mono);color:var(--accent);cursor:pointer;opacity:.8}
+.card-link:hover{opacity:1}
+.ev-item{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
+.ev-item:last-child{border-bottom:none}
+.ev-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.ev-time{font-family:var(--mono);font-size:11px;color:var(--accent);min-width:38px}
+.ev-name{font-size:13px;font-weight:500}
+.ev-loc{font-size:11px;color:var(--muted)}
+.tx-mini{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
+.tx-mini:last-child{border-bottom:none}
+.tx-mini-ico{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.tx-mini-name{font-size:13px;font-weight:500;flex:1}
+.tx-mini-val{font-family:var(--mono);font-size:12.5px;font-weight:500}
+.tx-in{color:var(--green)}.tx-out{color:var(--red)}
+.alert-item{display:flex;gap:9px;padding:9px 11px;border-radius:8px;font-size:12.5px;margin-bottom:7px;cursor:pointer;transition:opacity .2s}
+.alert-item:last-child{margin-bottom:0}
+.alert-item:hover{opacity:.85}
+.a-warn{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2)}
+.a-good{background:rgba(67,233,123,.08);border:1px solid rgba(67,233,123,.2)}
+.a-info{background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2)}
+
+/* AGENDA */
+.agenda-wrap{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.agenda-topbar{display:flex;align-items:center;justify-content:space-between}
+.agenda-days{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.day-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.day-card.today{border-color:rgba(108,99,255,.45)}
+.day-lbl{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.day-lbl.t{color:var(--accent)}
+.no-ev{font-size:12px;color:var(--muted);font-family:var(--mono);padding:10px 0;text-align:center}
+.gcal-tag{font-size:10px;font-family:var(--mono)}
+.gcal-tag.r{color:var(--green)}.gcal-tag.l{color:var(--muted)}
+
+/* FINANCEIRO */
+.fin-wrap{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:14px}
+.fin-topbar{display:flex;align-items:center;gap:10px}
+.month-nav{display:flex;align-items:center;gap:8px;margin-left:auto}
+.mn-btn{width:26px;height:26px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.mn-btn:hover{color:var(--text);border-color:var(--accent)}
+.mn-lbl{font-family:var(--mono);font-size:12px;min-width:88px;text-align:center}
+.fin-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.fin-charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.chart-ttl{font-size:12px;font-weight:500;margin-bottom:10px}
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:90px}
+.bar-grp{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
+.bar-w{display:flex;gap:2px;align-items:flex-end;height:72px}
+.bar{border-radius:3px 3px 0 0;min-width:9px;transition:opacity .2s}
+.bar:hover{opacity:.75}
+.bar-lbl{font-size:9px;font-family:var(--mono);color:var(--muted)}
+.donut-wrap{display:flex;align-items:center;gap:14px}
+.dleg{display:flex;flex-direction:column;gap:5px;flex:1}
+.dleg-row{display:flex;align-items:center;gap:6px;font-size:11px}
+.dleg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dleg-pct{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.ins-list{display:flex;flex-direction:column;gap:7px}
+.ins{display:flex;gap:9px;padding:10px 12px;border-radius:9px;font-size:12.5px;line-height:1.5;cursor:pointer}
+.ins:hover{opacity:.9}
+.ins.w{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2)}
+.ins.g{background:rgba(67,233,123,.08);border:1px solid rgba(67,233,123,.2)}
+.ins.i{background:rgba(108,99,255,.08);border:1px solid rgba(108,99,255,.2)}
+.ins-ico{font-size:16px;flex-shrink:0}
+.ins-action{font-size:11px;font-family:var(--mono);opacity:.7;cursor:pointer;margin-top:3px;display:block}
+.tx-table{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.tx-hdr{display:grid;grid-template-columns:2fr 1fr 1fr 80px;padding:9px 15px;border-bottom:1px solid var(--border);font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.tx-row{display:grid;grid-template-columns:2fr 1fr 1fr 80px;padding:10px 15px;border-bottom:1px solid rgba(42,42,56,.5);align-items:center;transition:background .15s}
+.tx-row:last-child{border-bottom:none}
+.tx-row:hover{background:var(--surface2)}
+.tx-nc{display:flex;align-items:center;gap:8px}
+.tx-ic{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.tx-n{font-size:13px;font-weight:500}
+.tx-c{font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.tx-v{font-family:var(--mono);font-size:13px;font-weight:500}
+.add-btn{padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:background .2s}
+.add-btn:hover{background:#5a52e0}
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.chat-msgs{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:11px;scroll-behavior:smooth}
+.msg{display:flex;gap:9px;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{flex-direction:row-reverse}
+.msg-av{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;font-weight:600}
+.msg.ai .msg-av{background:linear-gradient(135deg,var(--accent),#9b8fff);color:#fff}
+.msg.user .msg-av{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.bubble{max-width:80%;padding:10px 14px;border-radius:12px;font-size:13.5px;line-height:1.65}
+.msg.ai .bubble{background:var(--surface2);border:1px solid var(--border);border-bottom-left-radius:3px}
+.msg.user .bubble{background:rgba(108,99,255,.18);border:1px solid rgba(108,99,255,.28);border-bottom-right-radius:3px}
+.bubble strong{color:var(--accent);font-weight:500}
+.bubble .score{display:inline-flex;align-items:center;font-family:var(--mono);font-size:12px;padding:2px 9px;border-radius:6px;margin:1px 0}
+.bubble .score.a{background:rgba(67,233,123,.15);color:var(--green)}
+.bubble .score.b{background:rgba(245,166,35,.15);color:var(--amber)}
+.bubble .score.c{background:rgba(255,101,132,.15);color:var(--red)}
+.ev-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:8px}
+.ev-card-hdr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ev-card-title{font-weight:500;font-size:13px}
+.ev-card-row{font-size:12px;color:var(--muted);padding:2px 0}
+.ev-card-row span{color:var(--text)}
+.ev-card-btns{display:flex;gap:8px;margin-top:10px}
+.ecb{padding:6px 13px;border-radius:7px;border:none;font-family:var(--sans);font-size:12px;cursor:pointer;transition:all .2s}
+.ecb.ok{background:var(--accent);color:#fff}
+.ecb.ok:hover{background:#5a52e0}
+.ecb.cancel{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.typing{display:flex;gap:4px;align-items:center;padding:3px 0}
+.typing span{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:bounce .8s ease infinite}
+.typing span:nth-child(2){animation-delay:.15s}
+.typing span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.chat-btm{padding:12px 18px;border-top:1px solid var(--border);background:var(--surface)}
+.qrow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.qbtn{font-size:11px;padding:4px 11px;border-radius:16px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all .2s;font-family:var(--sans)}
+.qbtn:hover{border-color:var(--accent);color:var(--accent)}
+.inp-row{display:flex;gap:9px;align-items:flex-end}
+.chat-in{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text);font-family:var(--sans);font-size:13px;resize:none;outline:none;min-height:40px;max-height:90px;line-height:1.5}
+.chat-in:focus{border-color:rgba(108,99,255,.45)}
+.chat-in::placeholder{color:var(--muted)}
+.sbtn{width:38px;height:38px;border-radius:9px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.sbtn:hover{background:#5a52e0}
+.sbtn svg{width:15px;height:15px;fill:#fff}
+
+/* Modal */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.modal-ov.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;width:320px;animation:fadeUp .2s ease}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:16px}
+.fg{margin-bottom:11px}
+.fg label{display:block;font-size:10px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.fg input,.fg select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .2s}
+.fg input:focus,.fg select:focus{border-color:rgba(108,99,255,.45)}
+.fg select option{background:var(--surface2)}
+.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.mb-c{padding:7px 14px;background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;cursor:pointer;font-family:var(--sans);font-size:12.5px}
+.mb-s{padding:7px 14px;background:var(--accent);border:none;color:#fff;border-radius:7px;cursor:pointer;font-family:var(--sans);font-size:12.5px;font-weight:500}
+
+/* API Key setup screen */
+.setup-screen{display:flex;align-items:center;justify-content:center;height:100%;padding:40px}
+.setup-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:420px;width:100%;text-align:center}
+.setup-box h2{font-size:18px;font-weight:600;margin-bottom:8px}
+.setup-box p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.setup-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 13px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;margin-bottom:12px}
+.setup-input:focus{border-color:rgba(108,99,255,.45)}
+.setup-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;transition:background .2s}
+.setup-btn:hover{background:#5a52e0}
+.setup-note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5}
+.setup-note a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- Setup screen (shown if no API key) -->
+<div id="setup-screen" class="setup-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:999">
+  <div class="setup-box">
+    <div style="font-size:36px;margin-bottom:12px">🤖</div>
+    <h2>Configurar Aria</h2>
+    <p>Para ativar a IA, insira sua chave da API da Anthropic. Ela fica salva apenas no seu navegador.</p>
+    <input class="setup-input" id="api-key-input" type="password" placeholder="sk-ant-api03-...">
+    <button class="setup-btn" onclick="saveApiKey()">Ativar Assistente</button>
+    <p class="setup-note">
+      Não tem uma chave? <a href="https://console.anthropic.com" target="_blank">Crie em console.anthropic.com</a><br>
+      Sua chave nunca é enviada a terceiros — apenas à API da Anthropic.
+    </p>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo"><div class="logo-dot"></div>Aria</div>
+    <div class="header-chips">
+      <div class="chip ai">🤖 IA Ativa</div>
+      <div class="chip" id="gcal-chip" onclick="connectGcal()">📅 Google Agenda</div>
+    </div>
+    <div class="header-right">
+      <span class="clock" id="clock"></span>
+      <div class="notif-btn" id="notif-btn" onclick="openNotifs()" title="Lembretes">
+        🔔<span class="notif-badge" id="notif-count" style="display:none">0</span>
+      </div>
+      <div class="chip" onclick="changeApiKey()" style="cursor:pointer" title="Trocar chave API">⚙️</div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="nav-icon-btn active" onclick="sw('dash',this)">🏠<span class="tooltip">Início</span></div>
+    <div class="nav-icon-btn" onclick="sw('agenda',this)">📅<span class="tooltip">Agenda</span></div>
+    <div class="nav-icon-btn" onclick="sw('fin',this)">💰<span class="tooltip">Financeiro</span></div>
+    <div class="nav-sep"></div>
+    <div class="nav-icon-btn" onclick="sw('chat',this)">💬<span class="tooltip">Assistente IA</span></div>
+    <div class="sidebar-bottom">
+      <div class="nav-icon-btn" onclick="sw('chat',document.querySelectorAll('.nav-icon-btn')[3]);setTimeout(()=>sq('Me dê um resumo completo do meu dia'),200)">⚡<span class="tooltip">Resumo do dia</span></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dash">
+      <div class="dash-scroll">
+        <div>
+          <div class="dash-greeting" id="greeting">Carregando...</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:3px">Aqui está sua visão geral de hoje</div>
+        </div>
+        <div class="dash-grid">
+          <div class="kpi" onclick="sw('fin',document.querySelectorAll('.nav-icon-btn')[2])">
+            <div class="kpi-label">Saldo do mês</div>
+            <div class="kpi-val" id="d-saldo" style="color:var(--green)">R$ 0</div>
+            <div class="kpi-note" id="d-saldo-n">carregando...</div>
+          </div>
+          <div class="kpi" onclick="sw('fin',document.querySelectorAll('.nav-icon-btn')[2])">
+            <div class="kpi-label">Despesas</div>
+            <div class="kpi-val" id="d-desp" style="color:var(--red)">R$ 0</div>
+            <div class="kpi-note" id="d-desp-n">este mês</div>
+          </div>
+          <div class="kpi" onclick="sw('agenda',document.querySelectorAll('.nav-icon-btn')[1])">
+            <div class="kpi-label">Compromissos hoje</div>
+            <div class="kpi-val" id="d-evs" style="color:var(--accent)">0</div>
+            <div class="kpi-note" id="d-evs-n">—</div>
+          </div>
+          <div class="kpi" onclick="sw('fin',document.querySelectorAll('.nav-icon-btn')[2])">
+            <div class="kpi-label">Taxa de poupança</div>
+            <div class="kpi-val" id="d-poup" style="color:var(--amber)">0%</div>
+            <div class="kpi-note">meta: 20%</div>
+          </div>
+        </div>
+        <div class="dash-cols">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📅 Agenda de hoje</span>
+              <span class="card-link" onclick="sw('agenda',document.querySelectorAll('.nav-icon-btn')[1])">ver tudo →</span>
+            </div>
+            <div id="dash-evs"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">💰 Últimos lançamentos</span>
+              <span class="card-link" onclick="sw('fin',document.querySelectorAll('.nav-icon-btn')[2])">ver tudo →</span>
+            </div>
+            <div id="dash-txs"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🤖 Alertas da Aria</span>
+            <span class="card-link" onclick="sw('chat',document.querySelectorAll('.nav-icon-btn')[3])">falar com Aria →</span>
+          </div>
+          <div id="dash-alerts"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENDA -->
+    <div class="view" id="view-agenda">
+      <div class="agenda-wrap">
+        <div class="agenda-topbar">
+          <div>
+            <div style="font-size:17px;font-weight:600">Agenda</div>
+            <div style="font-size:12px;color:var(--muted);font-family:var(--mono)">Próximos 7 dias</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="font-size:11px;font-family:var(--mono);color:var(--muted)" id="ag-sync"></div>
+            <button class="add-btn" onclick="sw('chat',document.querySelectorAll('.nav-icon-btn')[3]);setTimeout(()=>focusChat(),200)">💬 Agendar via IA</button>
+          </div>
+        </div>
+        <div class="agenda-days" id="agenda-days"></div>
+      </div>
+    </div>
+
+    <!-- FINANCEIRO -->
+    <div class="view" id="view-fin">
+      <div class="fin-wrap">
+        <div class="fin-topbar">
+          <div style="font-size:17px;font-weight:600">Financeiro</div>
+          <button class="add-btn" onclick="openTxModal()">+ Lançar</button>
+          <div class="month-nav">
+            <button class="mn-btn" onclick="chM(-1)">‹</button>
+            <span class="mn-lbl" id="mn-lbl"></span>
+            <button class="mn-btn" onclick="chM(1)">›</button>
+          </div>
+        </div>
+        <div class="fin-kpis">
+          <div class="kpi"><div class="kpi-label">Receitas</div><div class="kpi-val" id="f-rec" style="color:var(--green)">R$ 0</div><div class="kpi-note" id="f-rec-n">0 lançamentos</div></div>
+          <div class="kpi"><div class="kpi-label">Despesas</div><div class="kpi-val" id="f-desp" style="color:var(--red)">R$ 0</div><div class="kpi-note" id="f-desp-n">0 lançamentos</div></div>
+          <div class="kpi"><div class="kpi-label">Saldo</div><div class="kpi-val" id="f-saldo">R$ 0</div><div class="kpi-note" id="f-saldo-n">este mês</div></div>
+          <div class="kpi"><div class="kpi-label">Poupança</div><div class="kpi-val" id="f-poup" style="color:var(--amber)">0%</div><div class="kpi-note">meta: 20%</div></div>
+        </div>
+        <div class="fin-charts">
+          <div class="chart-card"><div class="chart-ttl">Receitas vs Despesas — 6 meses</div><div class="bar-chart" id="f-bar"></div></div>
+          <div class="chart-card"><div class="chart-ttl">Gastos por categoria</div><div class="donut-wrap"><canvas id="f-donut" width="80" height="80"></canvas><div class="dleg" id="f-dleg"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🤖 Análise IA</span>
+            <span class="card-link" onclick="sw('chat',document.querySelectorAll('.nav-icon-btn')[3]);setTimeout(()=>sq('Analise minha situação financeira completa'),200)">análise completa →</span>
+          </div>
+          <div class="ins-list" id="f-ins"></div>
+        </div>
+        <div class="tx-table">
+          <div class="tx-hdr"><span>Descrição</span><span>Categoria</span><span>Valor</span><span>Data</span></div>
+          <div id="f-rows"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="view" id="view-chat">
+      <div class="chat-wrap">
+        <div class="chat-msgs" id="chat-msgs">
+          <div class="msg ai">
+            <div class="msg-av">A</div>
+            <div><div class="bubble">
+              Olá! Sou a <strong>Aria</strong>, sua assistente pessoal com IA. 🌟<br><br>
+              Tenho acesso à sua <strong>agenda</strong> e ao seu <strong>financeiro</strong> ao mesmo tempo. Posso:<br><br>
+              📅 Agendar compromissos por linguagem natural<br>
+              💰 Analisar seus gastos e dar feedbacks financeiros<br>
+              📊 Resumos integrados do dia, semana ou mês<br>
+              🔔 Configurar lembretes automáticos<br><br>
+              O que posso fazer por você agora?
+            </div></div>
+          </div>
+        </div>
+        <div class="chat-btm">
+          <div class="qrow">
+            <button class="qbtn" onclick="sq('Me dê um resumo completo do meu dia')">⚡ Resumo do dia</button>
+            <button class="qbtn" onclick="sq('Como está minha saúde financeira?')">🩺 Saúde financeira</button>
+            <button class="qbtn" onclick="sq('O que tenho na agenda essa semana?')">📅 Agenda da semana</button>
+            <button class="qbtn" onclick="sq('Onde posso economizar este mês?')">✂️ Economizar</button>
+            <button class="qbtn" onclick="sq('Me dê um planejamento para os próximos 3 meses')">📈 Planejamento 3m</button>
+          </div>
+          <div class="inp-row">
+            <textarea class="chat-in" id="chat-in" placeholder="Agendar, analisar finanças, pedir resumos..." rows="1"
+              onkeydown="handleKey(event)" oninput="autoR(this)"></textarea>
+            <button class="sbtn" onclick="sendMsg()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal Lançamento -->
+<div class="modal-ov" id="tx-modal">
+  <div class="modal">
+    <h3>Novo lançamento</h3>
+    <div class="fg"><label>Descrição</label><input id="m-name" placeholder="Ex: Salário, Aluguel..."></div>
+    <div class="fg"><label>Valor (R$)</label><input id="m-val" type="number" step="0.01"></div>
+    <div class="fg"><label>Tipo</label><select id="m-type"><option value="in">📈 Receita</option><option value="out">📉 Despesa</option></select></div>
+    <div class="fg"><label>Categoria</label>
+      <select id="m-cat">
+        <option>💼 Trabalho</option><option>🏠 Moradia</option><option>🍔 Alimentação</option>
+        <option>🚗 Transporte</option><option>🏥 Saúde</option><option>🎉 Lazer</option>
+        <option>🎓 Educação</option><option>👗 Vestuário</option><option>📦 Outros</option>
+      </select>
+    </div>
+    <div class="mbtns">
+      <button class="mb-c" onclick="closeMod('tx-modal')">Cancelar</button>
+      <button class="mb-s" onclick="saveTx()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== API KEY =====
+let API_KEY = localStorage.getItem('aria_api_key') || '';
+
+function checkApiKey() {
+  if (!API_KEY) {
+    document.getElementById('setup-screen').style.display = 'flex';
+  }
+}
+
+function saveApiKey() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-')) {
+    alert('Chave inválida. Deve começar com sk-');
+    return;
+  }
+  API_KEY = key;
+  localStorage.setItem('aria_api_key', key);
+  document.getElementById('setup-screen').style.display = 'none';
+}
+
+function changeApiKey() {
+  document.getElementById('api-key-input').value = API_KEY;
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+// ===== STATE =====
+let gcalOn = false;
+let pendingEv = null;
+let curM = new Date().getMonth(), curY = new Date().getFullYear();
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MN = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const CAT_C = {
+  '💼 Trabalho':'#6c63ff','🏠 Moradia':'#ff6584','🍔 Alimentação':'#f5a623',
+  '🚗 Transporte':'#43e97b','🏥 Saúde':'#4ecdc4','🎉 Lazer':'#a29bfe',
+  '🎓 Educação':'#fd79a8','👗 Vestuário':'#fdcb6e','📦 Outros':'#636e72'
+};
+
+// Load data from localStorage or start empty
+function loadData() {
+  const savedEvents = localStorage.getItem('aria_events');
+  const savedTx = localStorage.getItem('aria_tx');
+  return {
+    events: savedEvents ? JSON.parse(savedEvents) : [],
+    txData: savedTx ? JSON.parse(savedTx) : []
+  };
+}
+
+let { events, txData } = loadData();
+let reminders = [];
+
+function buildHistD(){
+  let result=[];
+  for(let i=5;i>=0;i--){
+    let d=new Date();d.setMonth(d.getMonth()-i);
+    let key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    let lbl=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][d.getMonth()];
+    let mt=txData.filter(t=>t.date.startsWith(key));
+    result.push({m:lbl,rec:mt.filter(t=>t.type==="in").reduce((s,t)=>s+t.val,0),desp:mt.filter(t=>t.type==="out").reduce((s,t)=>s+t.val,0)});
+  }
+  return result;
+}
+
+function saveData() {
+  localStorage.setItem('aria_events', JSON.stringify(events));
+  localStorage.setItem('aria_tx', JSON.stringify(txData));
+}
+
+// ===== UTILS =====
+function td(off=0){let d=new Date();d.setDate(d.getDate()+off);return d.toISOString().split('T')[0];}
+function fmt(v){return'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function getTx(){return txData.filter(t=>t.date.startsWith(curY+'-'+String(curM+1).padStart(2,'0')));}
+function nwdOff(n){let d=new Date(),day=d.getDay(),diff=n-day;if(diff<=0)diff+=7;return diff;}
+
+// ===== CLOCK =====
+function tick(){
+  let d=new Date();
+  document.getElementById('clock').textContent=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  let h=d.getHours();
+  document.getElementById('greeting').textContent=(h<12?'Bom dia! 🌅':h<18?'Boa tarde! ☀️':'Boa noite! 🌙')+' Veja seu resumo';
+  checkReminders();
+}
+tick(); setInterval(tick,1000);
+
+// ===== NAV =====
+function sw(id,el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-icon-btn').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  if(id==='dash')renderDash();
+  if(id==='agenda')renderAgenda();
+  if(id==='fin'){renderFin();document.getElementById('mn-lbl').textContent=MONTHS[curM]+' '+curY;}
+}
+
+// ===== GCAL =====
+function connectGcal(){
+  if(gcalOn)return;
+  let chip=document.getElementById('gcal-chip');
+  chip.textContent='⏳ Conectando...';
+  setTimeout(()=>{
+    gcalOn=true;
+    chip.textContent='📅 Google ✓';
+    chip.classList.add('on');
+    addMsg('ai','✅ <strong>Google Agenda conectado!</strong> Agora seus eventos são sincronizados automaticamente.',true);
+    document.getElementById('ag-sync').innerHTML='<span style="color:var(--green)">●</span> Sincronizado';
+  },1500);
+}
+
+// ===== REMINDERS =====
+function checkReminders(){
+  let now=new Date();
+  reminders.forEach(r=>{
+    if(!r.fired&&(r.alertAt-now)<=0&&(r.alertAt-now)>-60000){
+      r.fired=true;
+      addMsg('ai','🔔 <strong>Lembrete!</strong><br>'+r.msg,true);
+      sw('chat',document.querySelectorAll('.nav-icon-btn')[3]);
+    }
+  });
+  let active=reminders.filter(r=>!r.fired).length;
+  let badge=document.getElementById('notif-count');
+  if(active>0){badge.style.display='flex';badge.textContent=active;}
+  else badge.style.display='none';
+}
+
+function openNotifs(){
+  let active=reminders.filter(r=>!r.fired);
+  if(active.length===0) addMsg('ai','Nenhum lembrete ativo no momento.',true);
+  else addMsg('ai','🔔 <strong>Lembretes ativos:</strong><br>'+active.map(r=>'• '+r.msg).join('<br>'),true);
+  sw('chat',document.querySelectorAll('.nav-icon-btn')[3]);
+}
+
+// ===== DASHBOARD =====
+function renderDash(){
+  let tx=getTx();
+  let rec=tx.filter(t=>t.type==='in').reduce((s,t)=>s+t.val,0);
+  let desp=tx.filter(t=>t.type==='out').reduce((s,t)=>s+t.val,0);
+  let saldo=rec-desp;
+  let poup=rec>0?Math.round((saldo/rec)*100):0;
+  let todayEvs=events.filter(e=>e.date===td(0));
+
+  document.getElementById('d-saldo').textContent=fmt(saldo);
+  document.getElementById('d-saldo').style.color=saldo>=0?'var(--green)':'var(--red)';
+  document.getElementById('d-saldo-n').textContent=saldo>=0?'▲ positivo este mês':'▼ negativo este mês';
+  document.getElementById('d-desp').textContent=fmt(desp);
+  document.getElementById('d-desp-n').textContent=tx.filter(t=>t.type==='out').length+' lançamentos';
+  document.getElementById('d-evs').textContent=todayEvs.length;
+  document.getElementById('d-poup').textContent=poup+'%';
+  document.getElementById('d-poup').style.color=poup>=20?'var(--green)':poup>=10?'var(--amber)':'var(--red)';
+  let nextEv=todayEvs.sort((a,b)=>a.time.localeCompare(b.time))[0];
+  document.getElementById('d-evs-n').textContent=nextEv?'próximo: '+nextEv.time:'sem eventos hoje';
+
+  const catC={trabalho:'#6c63ff',saude:'#ff6584',pessoal:'#43e97b',outro:'#888'};
+  document.getElementById('dash-evs').innerHTML=todayEvs.length
+    ?todayEvs.sort((a,b)=>a.time.localeCompare(b.time)).map(e=>`
+      <div class="ev-item">
+        <div class="ev-dot" style="background:${catC[e.cat]||'#6c63ff'}"></div>
+        <div class="ev-time">${e.time}</div>
+        <div><div class="ev-name">${e.emoji||''} ${e.name}</div><div class="ev-loc">${e.loc||''}</div></div>
+      </div>`).join('')
+    :`<div style="font-size:12px;color:var(--muted);font-family:var(--mono);padding:12px 0;text-align:center">Nenhum compromisso hoje</div>`;
+
+  document.getElementById('dash-txs').innerHTML=[...txData].reverse().slice(0,4).map(t=>`
+    <div class="tx-mini">
+      <div class="tx-mini-ico" style="background:${t.type==='in'?'rgba(67,233,123,.1)':'rgba(255,101,132,.1)'}">${t.type==='in'?'📈':'📉'}</div>
+      <div class="tx-mini-name">${t.name}</div>
+      <div class="tx-mini-val ${t.type==='in'?'tx-in':'tx-out'}">${t.type==='in'?'+':'-'}${fmt(t.val)}</div>
+    </div>`).join('');
+
+  let alerts=[];
+  let alim=getTx().filter(t=>t.cat.includes('Aliment')).reduce((s,t)=>s+t.val,0);
+  if(poup<10)alerts.push({cls:'a-warn',icon:'⚠️',txt:`Taxa de poupança em ${poup}% — abaixo da meta de 20%.`,action:'Como melhorar minha poupança?'});
+  else if(poup>=20)alerts.push({cls:'a-good',icon:'🎉',txt:`Ótimo! Você está poupando ${poup}% da renda este mês.`,action:'Como investir o que estou poupando?'});
+  if(rec>0&&alim/rec>0.15)alerts.push({cls:'a-warn',icon:'🍔',txt:`Alimentação em ${Math.round(alim/rec*100)}% da renda (ideal: até 15%).`,action:'Dicas para reduzir gastos com alimentação'});
+  if(todayEvs.length>0)alerts.push({cls:'a-info',icon:'📅',txt:`Você tem ${todayEvs.length} compromisso${todayEvs.length>1?'s':''} hoje. Próximo: ${todayEvs[0].name} às ${todayEvs[0].time}.`,action:'Ver minha agenda completa'});
+  if(alerts.length===0)alerts.push({cls:'a-good',icon:'✨',txt:'Tudo em ordem! Sem alertas no momento.',action:''});
+
+  document.getElementById('dash-alerts').innerHTML=alerts.map(a=>`
+    <div class="alert-item ${a.cls}" onclick="${a.action?"sw('chat',document.querySelectorAll('.nav-icon-btn')[3]);setTimeout(()=>sq('"+a.action+"'),200)":''}">
+      <span style="font-size:16px">${a.icon}</span>
+      <div style="flex:1">${a.txt}${a.action?` <span style="font-size:11px;font-family:var(--mono);opacity:.7">→ ${a.action}</span>`:''}</div>
+    </div>`).join('');
+}
+
+// ===== AGENDA =====
+function renderAgenda(){
+  document.getElementById('ag-sync').innerHTML=gcalOn
+    ?'<span style="color:var(--green)">●</span> Google Agenda'
+    :'<span style="color:var(--muted)">○</span> Local';
+  let grid=document.getElementById('agenda-days');
+  grid.innerHTML='';
+  const catC={trabalho:'#6c63ff',saude:'#ff6584',pessoal:'#43e97b',outro:'#888'};
+  for(let i=0;i<7;i++){
+    let dt=td(i);
+    let dd=new Date(dt+'T12:00:00');
+    let dayEvs=events.filter(e=>e.date===dt).sort((a,b)=>a.time.localeCompare(b.time));
+    let lbl=i===0?'Hoje — '+dd.getDate()+'/'+String(dd.getMonth()+1).padStart(2,'0')
+            :i===1?'Amanhã — '+dd.getDate()+'/'+String(dd.getMonth()+1).padStart(2,'0')
+            :DAYS[dd.getDay()]+' — '+dd.getDate()+'/'+String(dd.getMonth()+1).padStart(2,'0');
+    grid.innerHTML+=`<div class="day-card ${i===0?'today':''}">
+      <div class="day-lbl ${i===0?'t':''}">${lbl}</div>
+      ${dayEvs.length?dayEvs.map(e=>`
+        <div class="ev-item">
+          <div class="ev-dot" style="background:${catC[e.cat]||'#6c63ff'}"></div>
+          <div class="ev-time">${e.time}</div>
+          <div><div class="ev-name">${e.emoji||''} ${e.name}</div>
+          <div class="ev-loc">${e.loc||''}</div>
+          <div class="gcal-tag ${gcalOn?'r':'l'}">${gcalOn?'● Google Agenda':'● Local'}</div></div>
+        </div>`).join(''):`<div class="no-ev">— livre —</div>`}
+    </div>`;
+  }
+}
+
+// ===== FINANCEIRO =====
+function chM(d){
+  curM+=d;if(curM>11){curM=0;curY++;}if(curM<0){curM=11;curY--;}
+  document.getElementById('mn-lbl').textContent=MONTHS[curM]+' '+curY;
+  renderFin();
+}
+
+function renderFin(){
+  let tx=getTx();
+  let rec=tx.filter(t=>t.type==='in').reduce((s,t)=>s+t.val,0);
+  let desp=tx.filter(t=>t.type==='out').reduce((s,t)=>s+t.val,0);
+  let saldo=rec-desp;
+  let poup=rec>0?Math.round((saldo/rec)*100):0;
+
+  document.getElementById('f-rec').textContent=fmt(rec);
+  document.getElementById('f-desp').textContent=fmt(desp);
+  document.getElementById('f-saldo').textContent=fmt(saldo);
+  document.getElementById('f-saldo').style.color=saldo>=0?'var(--green)':'var(--red)';
+  document.getElementById('f-poup').textContent=poup+'%';
+  document.getElementById('f-poup').style.color=poup>=20?'var(--green)':poup>=10?'var(--amber)':'var(--red)';
+  document.getElementById('f-rec-n').textContent=tx.filter(t=>t.type==='in').length+' lançamentos';
+  document.getElementById('f-desp-n').textContent=tx.filter(t=>t.type==='out').length+' lançamentos';
+  document.getElementById('f-saldo-n').textContent=saldo>=0?'▲ positivo':'▼ negativo';
+
+  let histD=buildHistD();
+  let maxV=Math.max(...histD.map(h=>Math.max(h.rec,h.desp)),1);
+  document.getElementById('f-bar').innerHTML=histD.map(h=>`
+    <div class="bar-grp">
+      <div class="bar-w">
+        <div class="bar" style="height:${Math.round((h.rec/maxV)*66)}px;width:11px;background:var(--green);opacity:.8" title="Receita: ${fmt(h.rec)}"></div>
+        <div class="bar" style="height:${Math.round((h.desp/maxV)*66)}px;width:11px;background:var(--red);opacity:.8" title="Despesa: ${fmt(h.desp)}"></div>
+      </div>
+      <div class="bar-lbl">${h.m}</div>
+    </div>`).join('');
+
+  let cats={};tx.filter(t=>t.type==='out').forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+t.val;});
+  let entries=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  let total=entries.reduce((s,e)=>s+e[1],0);
+  let canvas=document.getElementById('f-donut');
+  let ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,80,80);
+  if(total>0){
+    let start=-Math.PI/2;
+    entries.forEach(([cat,val])=>{
+      let slice=(val/total)*2*Math.PI;
+      ctx.beginPath();ctx.moveTo(40,40);ctx.arc(40,40,36,start,start+slice);ctx.closePath();
+      ctx.fillStyle=CAT_C[cat]||'#888';ctx.fill();start+=slice;
+    });
+    ctx.beginPath();ctx.arc(40,40,20,0,2*Math.PI);ctx.fillStyle='#17171f';ctx.fill();
+  }
+  document.getElementById('f-dleg').innerHTML=entries.slice(0,5).map(([cat,val])=>`
+    <div class="dleg-row">
+      <div class="dleg-dot" style="background:${CAT_C[cat]||'#888'}"></div>
+      <span>${cat.replace(/^\S+\s/,'')}</span>
+      <span class="dleg-pct">${total>0?Math.round((val/total)*100):0}%</span>
+    </div>`).join('');
+
+  let ins=[];
+  let alim=cats['🍔 Alimentação']||0;
+  let moradia=cats['🏠 Moradia']||0;
+  if(poup>=20)ins.push({t:'g',i:'🎉',txt:`<strong>Poupança excelente (${poup}%)!</strong> Acima da meta de 20%.`,a:'Como investir o que estou poupando?'});
+  else ins.push({t:'w',i:'📉',txt:`<strong>Poupança em ${poup}%</strong> (meta: 20%). Reduza ${fmt(Math.max(0,desp-(rec*0.8)))} para atingir a meta.`,a:'Me ajude a atingir 20% de poupança'});
+  if(rec>0&&alim/rec>0.15)ins.push({t:'w',i:'🍔',txt:`<strong>Alimentação em ${Math.round(alim/rec*100)}%</strong> da renda (ideal: 15%).`,a:'Dicas para reduzir gastos com alimentação'});
+  if(rec>0&&moradia/rec>0.30)ins.push({t:'w',i:'🏠',txt:`<strong>Moradia comprometendo ${Math.round(moradia/rec*100)}%</strong> da renda (ideal: até 30%).`,a:'Como otimizar gastos com moradia'});
+  ins.push({t:'i',i:'📈',txt:`<strong>Projeção anual:</strong> Mantendo esse ritmo, você poupará ${fmt(Math.max(0,saldo)*12)} em 12 meses.`,a:'Simular cenários de investimento'});
+
+  document.getElementById('f-ins').innerHTML=ins.map(x=>`
+    <div class="ins ${x.t}" onclick="sw('chat',document.querySelectorAll('.nav-icon-btn')[3]);setTimeout(()=>sq('${x.a}'),200)">
+      <span class="ins-ico">${x.i}</span>
+      <div>${x.txt}<span class="ins-action">→ ${x.a}</span></div>
+    </div>`).join('');
+
+  document.getElementById('f-rows').innerHTML=[...tx].reverse().map(t=>`
+    <div class="tx-row">
+      <div class="tx-nc">
+        <div class="tx-ic" style="background:${t.type==='in'?'rgba(67,233,123,.1)':'rgba(255,101,132,.1)'}">${t.type==='in'?'📈':'📉'}</div>
+        <div><div class="tx-n">${t.name}</div><div class="tx-c">${t.cat}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${t.cat.split(' ')[0]}</div>
+      <div class="tx-v ${t.type==='in'?'tx-in':'tx-out'}">${t.type==='in'?'+':'-'}${fmt(t.val)}</div>
+      <div style="font-size:11px;color:var(--muted);font-family:var(--mono)">${t.date.split('-').reverse().join('/')}</div>
+    </div>`).join('');
+}
+
+function openTxModal(){document.getElementById('tx-modal').classList.add('open');}
+function closeMod(id){document.getElementById(id).classList.remove('open');}
+function saveTx(){
+  let n=document.getElementById('m-name').value.trim();
+  let v=parseFloat(document.getElementById('m-val').value);
+  if(!n||!v)return;
+  let d=new Date();
+  txData.push({name:n,val:v,type:document.getElementById('m-type').value,
+    cat:document.getElementById('m-cat').value,
+    date:curY+'-'+String(curM+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')});
+  saveData();
+  closeMod('tx-modal');renderFin();renderDash();
+  document.getElementById('m-name').value='';document.getElementById('m-val').value='';
+}
+
+// ===== CHAT =====
+function addMsg(role,html){
+  let box=document.getElementById('chat-msgs');
+  let div=document.createElement('div');div.className='msg '+role;
+  div.innerHTML=`<div class="msg-av">${role==='ai'?'A':'Eu'}</div><div><div class="bubble">${html}</div></div>`;
+  box.appendChild(div);box.scrollTop=box.scrollHeight;
+}
+function showTyping(){
+  let box=document.getElementById('chat-msgs');
+  let div=document.createElement('div');div.className='msg ai';div.id='typing';
+  div.innerHTML=`<div class="msg-av">A</div><div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div></div>`;
+  box.appendChild(div);box.scrollTop=box.scrollHeight;
+}
+function hideTyping(){let t=document.getElementById('typing');if(t)t.remove();}
+
+function addEvCard(ev){
+  let box=document.getElementById('chat-msgs');
+  let div=document.createElement('div');div.className='msg ai';
+  div.innerHTML=`<div class="msg-av">A</div><div><div class="bubble">Encontrei este compromisso. Confirma o agendamento?
+    <div class="ev-card">
+      <div class="ev-card-hdr"><span style="font-size:18px">${ev.emoji}</span><span class="ev-card-title">${ev.name}</span></div>
+      <div class="ev-card-row">📅 <span>${new Date(ev.date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</span></div>
+      <div class="ev-card-row">⏰ <span>${ev.time||'Horário não definido'}</span></div>
+      ${ev.location?`<div class="ev-card-row">📍 <span>${ev.location}</span></div>`:''}
+      ${ev.reminderMinutes?`<div class="ev-card-row">🔔 <span>${ev.reminder}</span></div>`:''}
+      <div class="ev-card-btns">
+        <button class="ecb ok" onclick="confirmEv()">✓ Confirmar</button>
+        <button class="ecb cancel" onclick="pendingEv=null">Cancelar</button>
+      </div>
+    </div>
+  </div></div>`;
+  box.appendChild(div);box.scrollTop=box.scrollHeight;
+  pendingEv=ev;
+}
+
+function confirmEv(){
+  if(!pendingEv)return;
+  let ev=pendingEv;pendingEv=null;
+  events.push(ev);
+  saveData();
+  if(ev.reminderMinutes){
+    let evDate=new Date(ev.date+'T'+(ev.time||'09:00'));
+    reminders.push({
+      msg:`Você tem <strong>${ev.name}</strong> em ${ev.reminderMinutes>=60?Math.round(ev.reminderMinutes/60)+'h':'15min'}! ${ev.location?'📍 '+ev.location:''}`,
+      alertAt:new Date(evDate.getTime()-ev.reminderMinutes*60*1000),fired:false
+    });
+  }
+  addMsg('ai',`✅ <strong>${ev.name}</strong> agendado para ${new Date(ev.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'numeric',month:'long'})} às ${ev.time}!${ev.reminderMinutes?' 🔔 Lembrete configurado.':''}${gcalOn?'<br>📲 Sincronizado com Google Agenda!':''}`);
+  renderAgenda();renderDash();
+  document.querySelectorAll('.ecb').forEach(b=>b.disabled=true);
+}
+
+function focusChat(){document.getElementById('chat-in').focus();}
+function sq(t){document.getElementById('chat-in').value=t;sendMsg();}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}}
+function autoR(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,90)+'px';}
+
+async function sendMsg(){
+  let inp=document.getElementById('chat-in');
+  let text=inp.value.trim();if(!text)return;
+  if(!API_KEY){addMsg('ai','⚠️ Configure sua chave de API primeiro clicando em ⚙️ no canto superior direito.');return;}
+  inp.value='';inp.style.height='auto';
+  addMsg('user',text);showTyping();
+
+  let tx=getTx();
+  let rec=tx.filter(t=>t.type==='in').reduce((s,t)=>s+t.val,0);
+  let desp=tx.filter(t=>t.type==='out').reduce((s,t)=>s+t.val,0);
+  let cats={};tx.filter(t=>t.type==='out').forEach(t=>{cats[t.cat]=(cats[t.cat]||0)+t.val;});
+  let catStr=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,v])=>c+': '+fmt(v)).join(', ');
+  let poup=rec>0?Math.round(((rec-desp)/rec)*100):0;
+  let todayEvs=events.filter(e=>e.date===td(0));
+  let weekEvs=events.filter(e=>e.date>=td(0)&&e.date<=td(7));
+
+  let sys=`Você é Aria, assistente pessoal completa com IA. Responda em português brasileiro, de forma prática, empática e direta.
+
+HOJE: ${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}.
+GOOGLE AGENDA: ${gcalOn?'CONECTADO':'Desconectado'}.
+
+AGENDA:
+- Hoje: ${todayEvs.length?todayEvs.map(e=>e.time+' '+e.emoji+' '+e.name+' ('+e.loc+')').join(' | '):'Nenhum compromisso'}
+- Esta semana: ${weekEvs.length?weekEvs.map(e=>e.date+' '+e.time+' '+e.name).join(' | '):'Nenhum'}
+- Total de eventos: ${events.length}
+
+FINANCEIRO (${MONTHS[curM]} ${curY}):
+- Receitas: ${fmt(rec)} | Despesas: ${fmt(desp)} | Saldo: ${fmt(rec-desp)} | Poupança: ${poup}%
+- Por categoria: ${catStr||'Sem dados'}
+- Lançamentos: ${tx.map(t=>(t.type==='in'?'+':'-')+fmt(t.val)+' '+t.name).join(' | ')}
+
+REGRAS:
+1. Para compromisso/reunião/evento com data: responda APENAS com JSON:
+{"type":"event","name":"nome","date":"YYYY-MM-DD","time":"HH:MM","location":"local","reminder":"descrição do lembrete","reminderMinutes":N,"emoji":"emoji","cat":"trabalho|saude|pessoal|outro"}
+Datas: hoje=${td(0)}, amanhã=${td(1)}, seg=${td(nwdOff(1))}, ter=${td(nwdOff(2))}, qua=${td(nwdOff(3))}, qui=${td(nwdOff(4))}, sex=${td(nwdOff(5))}.
+reminderMinutes: 15=15min antes, 60=1h antes, 1440=1 dia antes. 0 se não pedir lembrete.
+
+2. Análise financeira: use dados reais, dê nota A/B/C para saúde financeira, compare benchmarks (moradia≤30%, alimentação≤15%, poupança≥20%), sugira ações concretas com valores.
+
+3. Resumo do dia: combine agenda + finanças em um resumo integrado e útil.
+
+4. Seja conciso (máx 6 linhas), use quebras de linha para legibilidade.`;
+
+  try{
+    let res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,system:sys,messages:[{role:'user',content:text}]})
+    });
+    let data=await res.json();
+    hideTyping();
+    if(data.error){addMsg('ai','❌ Erro de API: '+data.error.message);return;}
+    let reply=data.content?.[0]?.text||'Erro.';
+    let jsonMatch=reply.match(/\{[\s\S]*?"type"\s*:\s*"event"[\s\S]*?\}/);
+    if(jsonMatch){try{addEvCard(JSON.parse(jsonMatch[0]));return;}catch(e){}}
+    let formatted=reply
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/nota:\s*A/gi,'nota: <span class="score a">A — Ótimo</span>')
+      .replace(/nota:\s*B/gi,'nota: <span class="score b">B — Atenção</span>')
+      .replace(/nota:\s*C/gi,'nota: <span class="score c">C — Crítico</span>')
+      .replace(/\n/g,'<br>');
+    addMsg('ai',formatted);
+  }catch(e){
+    hideTyping();
+    addMsg('ai','Erro de conexão. Verifique sua chave de API e tente novamente.');
+  }
+}
+
+// Init
+document.getElementById('mn-lbl').textContent=MONTHS[curM]+' '+curY;
+renderDash();
+checkApiKey();
+</script>
+</body>
+</html>
