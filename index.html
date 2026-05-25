@@ -205,6 +205,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .setup-note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5}
 .setup-note a{color:var(--accent);text-decoration:none}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleAuth()"></script>
 </head>
 <body>
 
@@ -517,19 +518,54 @@ function sw(id,el){
   if(id==='fin'){renderFin();document.getElementById('mn-lbl').textContent=MONTHS[curM]+' '+curY;}
 }
 
-// ===== GCAL =====
-function connectGcal(){
-  if(gcalOn)return;
-  let chip=document.getElementById('gcal-chip');
-  chip.textContent='⏳ Conectando...';
-  setTimeout(()=>{
-    gcalOn=true;
-    chip.textContent='📅 Google ✓';
-    chip.classList.add('on');
-    addMsg('ai','✅ <strong>Google Agenda conectado!</strong> Agora seus eventos são sincronizados automaticamente.',true);
-    document.getElementById('ag-sync').innerHTML='<span style="color:var(--green)">●</span> Sincronizado';
-  },1500);
+// ===== GCAL REAL INTEGRATION =====
+const GCAL_CLIENT_ID = '989337063889-hfq95q0030tkur7qp4vuvam2jn4kjs9u.apps.googleusercontent.com';
+const GCAL_SCOPES = 'https://www.googleapis.com/auth/calendar';
+let gcalToken = localStorage.getItem('aria_gcal_token') || '';
+let tokenClient = null;
+
+function initGoogleAuth(){
+  if(typeof google === 'undefined') return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GCAL_CLIENT_ID,
+    scope: GCAL_SCOPES,
+    callback: (resp) => {
+      if(resp.error){ addMsg('ai','❌ Erro ao conectar: '+resp.error); return; }
+      gcalToken = resp.access_token;
+      localStorage.setItem('aria_gcal_token', gcalToken);
+      gcalOn = true;
+      document.getElementById('gcal-chip').textContent = '📅 Google ✓';
+      document.getElementById('gcal-chip').classList.add('on');
+      document.getElementById('ag-sync').innerHTML = '<span style="color:var(--green)">●</span> Google Agenda';
+      addMsg('ai','✅ <strong>Google Agenda conectado!</strong> Seus eventos serão criados diretamente na sua agenda Google.');
+    }
+  });
+  if(gcalToken){ gcalOn=true; document.getElementById('gcal-chip').textContent='📅 Google ✓'; document.getElementById('gcal-chip').classList.add('on'); }
 }
+
+function connectGcal(){
+  if(!tokenClient){ alert('Aguarde 2 segundos e tente novamente.'); return; }
+  if(gcalOn){ addMsg('ai','✅ Google Agenda já está conectado!'); return; }
+  tokenClient.requestAccessToken();
+}
+
+async function createGcalEvent(ev){
+  if(!gcalOn||!gcalToken) return false;
+  try{
+    let start=ev.time?ev.date+'T'+ev.time+':00':ev.date;
+    let h=parseInt(ev.time||'09:00'),m=parseInt((ev.time||'09:00').split(':')[1]);
+    let endMin=(parseInt((ev.time||'09:00').split(':')[0])*60+parseInt((ev.time||'09:00').split(':')[1])+60);
+    let endStr=String(Math.floor(endMin/60)%24).padStart(2,'0')+':'+String(endMin%60).padStart(2,'0');
+    let end=ev.time?ev.date+'T'+endStr+':00':ev.date;
+    let body={summary:ev.name,location:ev.location||'',start:ev.time?{dateTime:start,timeZone:'America/Sao_Paulo'}:{date:ev.date},end:ev.time?{dateTime:end,timeZone:'America/Sao_Paulo'}:{date:ev.date},reminders:ev.reminderMinutes?{useDefault:false,overrides:[{method:'popup',minutes:ev.reminderMinutes}]}:{useDefault:true}};
+    let res=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{method:'POST',headers:{'Authorization':'Bearer '+gcalToken,'Content-Type':'pplication/json'},body:JSON.stringify(body)});
+    let data=await res.json();
+    if(data.id) return true;
+    if(data.error&&data.error.code===401){gcalOn=false;gcalToken='';localStorage.removeItem('aria_gcal_token');document.getElementById('gcal-chip').textContent='📅 Google Agenda';document.getElementById('gcal-chip').classList.remove('on');}
+    return false;
+  }catch(e){return false;}
+}
+
 
 // ===== REMINDERS =====
 function checkReminders(){
@@ -769,7 +805,7 @@ function addEvCard(ev){
   pendingEv=ev;
 }
 
-function confirmEv(){
+async function confirmEv(){
   if(!pendingEv)return;
   let ev=pendingEv;pendingEv=null;
   events.push(ev);
@@ -781,7 +817,9 @@ function confirmEv(){
       alertAt:new Date(evDate.getTime()-ev.reminderMinutes*60*1000),fired:false
     });
   }
-  addMsg('ai',`✅ <strong>${ev.name}</strong> agendado para ${new Date(ev.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'numeric',month:'long'})} às ${ev.time}!${ev.reminderMinutes?' 🔔 Lembrete configurado.':''}${gcalOn?'<br>📲 Sincronizado com Google Agenda!':''}`);
+  let gcalOk = await createGcalEvent(ev);
+  let gcalMsg = gcalOk ? '<br>📲 <strong>Adicionado ao Google Agenda!</strong>' : (gcalOn ? '<br>⚠️ Erro ao adicionar ao Google Agenda.' : '');
+  addMsg('ai',`✅ <strong>${ev.name}</strong> agendado para ${new Date(ev.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'numeric',month:'long'})} às ${ev.time}!${ev.reminderMinutes?' 🔔 Lembrete configurado.':''}${gcalMsg}`);
   renderAgenda();renderDash();
   document.querySelectorAll('.ecb').forEach(b=>b.disabled=true);
 }
@@ -863,6 +901,7 @@ reminderMinutes: 15=15min antes, 60=1h antes, 1440=1 dia antes. 0 se não pedir 
 document.getElementById('mn-lbl').textContent=MONTHS[curM]+' '+curY;
 renderDash();
 checkApiKey();
+if(typeof google !== "undefined") initGoogleAuth(); else window.addEventListener("load", ()=>setTimeout(initGoogleAuth,1000));
 </script>
 </body>
 </html>
